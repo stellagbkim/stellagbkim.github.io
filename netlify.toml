@@ -1,0 +1,7 @@
+# Netlify 설정
+# 정적 사이트(루트의 HTML) + 서버 함수(netlify/functions)
+
+[build]
+  # 빌드 과정이 없는 순수 정적 사이트. 퍼블리시 디렉터리는 저장소 루트.
+  publish = "."
+  functions = "netlify/functions"

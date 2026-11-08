@@ -326,22 +326,18 @@
   </div>
 
   <script>
-  // ===== Supabase 방명록 설정 =====
-  // 아래 두 값을 본인 Supabase 프로젝트 값으로 채우세요.
-  // Project Settings → API 에서 확인할 수 있습니다.
-  const SUPABASE_URL = "https://dynsspafogvfxsvuceia.supabase.co"; // Project URL
-  const SUPABASE_ANON_KEY = "sb_publishable_sTf1hOllr3TgFUreemmiBw_Di2az6sL"; // 공개(publishable) 키 — 브라우저 노출 가능
+  // ===== 방명록 설정 =====
+  // 브라우저는 Supabase를 직접 호출하지 않고, Netlify 서버 함수를 호출합니다.
+  //   브라우저 → /.netlify/functions/guestbook → Supabase
+  // Supabase 접속 정보(URL/secret 키)는 Netlify 환경변수에만 있고, 이 파일엔 비밀값이 없습니다.
+  const API = "/.netlify/functions/guestbook";
 
-  const TABLE = "guestbook";
   const form = document.getElementById("gbForm");
   const nameEl = document.getElementById("gbName");
   const msgEl = document.getElementById("gbMessage");
   const submitBtn = document.getElementById("gbSubmit");
   const statusEl = document.getElementById("gbStatus");
   const listEl = document.getElementById("gbList");
-
-  const configured = SUPABASE_URL.startsWith("https://") &&
-    (SUPABASE_ANON_KEY.startsWith("eyJ") || SUPABASE_ANON_KEY.startsWith("sb_publishable_"));
 
   function setStatus(msg, isError) {
     statusEl.textContent = msg;
@@ -359,27 +355,15 @@
     } catch (e) { return ""; }
   }
 
-  function headers() {
-    return {
-      "apikey": SUPABASE_ANON_KEY,
-      "Authorization": "Bearer " + SUPABASE_ANON_KEY,
-      "Content-Type": "application/json"
-    };
-  }
-
-  // 목록 조회 (select)
+  // 목록 조회 (서버 함수 GET → Supabase select)
   async function loadEntries() {
-    if (!configured) {
-      setStatus("아직 Supabase 키가 설정되지 않았어요. 코드 상단의 SUPABASE_ANON_KEY를 채우면 방명록이 작동합니다.", true);
-      return;
-    }
     setStatus("불러오는 중…");
     try {
-      const res = await fetch(
-        SUPABASE_URL + "/rest/v1/" + TABLE + "?select=id,name,message,created_at&order=created_at.desc&limit=50",
-        { headers: headers() }
-      );
-      if (!res.ok) throw new Error("HTTP " + res.status);
+      const res = await fetch(API, { method: "GET" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || ("HTTP " + res.status));
+      }
       const rows = await res.json();
       renderList(rows);
       setStatus(rows.length ? "" : "아직 남겨진 글이 없어요. 첫 글을 남겨 보세요!");
@@ -399,16 +383,16 @@
       </li>`).join("");
   }
 
-  // 글 저장 (insert)
+  // 글 저장 (서버 함수 POST → Supabase insert)
   async function addEntry(name, message) {
-    const res = await fetch(SUPABASE_URL + "/rest/v1/" + TABLE, {
+    const res = await fetch(API, {
       method: "POST",
-      headers: Object.assign(headers(), { "Prefer": "return=representation" }),
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, message })
     });
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error("HTTP " + res.status + " " + text);
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || ("HTTP " + res.status));
     }
     return res.json();
   }
@@ -418,7 +402,6 @@
     const name = nameEl.value.trim();
     const message = msgEl.value.trim();
     if (!name || !message) { setStatus("이름과 메시지를 모두 입력해 주세요.", true); return; }
-    if (!configured) { setStatus("Supabase 키가 아직 설정되지 않았어요. 코드 상단을 확인해 주세요.", true); return; }
 
     submitBtn.disabled = true;
     setStatus("저장하는 중…");
