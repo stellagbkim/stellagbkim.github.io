@@ -125,6 +125,24 @@
     .gb-item .gb-name { font-weight: 700; }
     .gb-item .gb-date { color: var(--muted); font-size: .78rem; }
     .gb-item .gb-msg { margin: 0; color: #444b45; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .cheer-li { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .cheer-li > span { flex: 1; }
+    .cheer-btn {
+      flex: none; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+      border: 1px solid var(--green); background: var(--white); color: var(--green);
+      border-radius: 999px; padding: 6px 12px; font-size: .82rem; font-weight: 700; font-family: inherit;
+    }
+    .cheer-btn:hover { background: var(--lime); }
+    .cheer-btn:disabled { opacity: .55; cursor: default; }
+    .cheer-count { font-variant-numeric: tabular-nums; }
+    .work-card {
+      background: var(--white); border: 1px solid var(--line); border-radius: 14px;
+      padding: 24px; display: grid; gap: 14px; max-width: 560px;
+    }
+    .work-card h3 { margin: 0; font-size: 1.2rem; }
+    .work-card p { margin: 0; color: var(--muted); font-size: .94rem; }
+    .work-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .work-actions .button { flex: none; }
     @media (max-width: 760px) {
       .gb-row { flex-direction: column; }
       .hero { grid-template-columns: 1fr; padding: 60px 0; gap: 34px; }
@@ -149,6 +167,7 @@
         <a href="#about">자기소개</a>
         <a href="#strengths">강점과 단점</a>
         <a href="#interests">관심사</a>
+        <a href="#works">내가 만든 프로젝트</a>
         <a href="#guestbook">방명록</a>
         <a href="#contact">연락</a>
       </nav>
@@ -281,19 +300,41 @@
           <div class="panel">
             <h3>작게 시작할 프로젝트</h3>
             <ul>
-              <li>관심 분야의 공개 데이터를 수집해 일관된 항목으로 정리하기</li>
-              <li>데이터를 정제하고 SQL로 조회할 수 있는 간단한 데이터베이스 만들기</li>
-              <li>조사 과정과 배운 점을 짧은 글로 기록하기</li>
-              <li>작업 결과를 한 페이지 포트폴리오로 발전시키기</li>
+              <li class="cheer-li"><span>관심 분야의 공개 데이터를 수집해 일관된 항목으로 정리하기</span>
+                <button class="cheer-btn" data-item="project-data-collect" type="button">👏 응원 <span class="cheer-count">0</span></button></li>
+              <li class="cheer-li"><span>데이터를 정제하고 SQL로 조회할 수 있는 간단한 데이터베이스 만들기</span>
+                <button class="cheer-btn" data-item="project-db-build" type="button">👏 응원 <span class="cheer-count">0</span></button></li>
+              <li class="cheer-li"><span>조사 과정과 배운 점을 짧은 글로 기록하기</span>
+                <button class="cheer-btn" data-item="project-record-writing" type="button">👏 응원 <span class="cheer-count">0</span></button></li>
+              <li class="cheer-li"><span>작업 결과를 한 페이지 포트폴리오로 발전시키기</span>
+                <button class="cheer-btn" data-item="project-portfolio" type="button">👏 응원 <span class="cheer-count">0</span></button></li>
             </ul>
           </div>
         </div>
       </section>
 
+      <section id="works">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">05 / My projects</div>
+            <h2 class="section-title">내가 만든 프로젝트</h2>
+          </div>
+          <p class="section-note">직접 만든 작업물입니다. 플레이해 보고 마음에 들면 응원을 남겨 주세요.</p>
+        </div>
+        <article class="work-card">
+          <h3>갤러그 스타일 슈팅 게임</h3>
+          <p>HTML Canvas와 바닐라 JavaScript로 만든 슈팅 게임입니다. 적 편대를 모두 격추해 보세요.</p>
+          <div class="work-actions">
+            <a class="button primary" href="galaga.html" target="_blank" rel="noopener">게임 플레이 ↗</a>
+            <button class="cheer-btn" data-item="work-galaga" type="button">👏 응원 <span class="cheer-count">0</span></button>
+          </div>
+        </article>
+      </section>
+
       <section id="guestbook">
         <div class="section-head">
           <div>
-            <div class="section-kicker">05 / Guestbook</div>
+            <div class="section-kicker">06 / Guestbook</div>
             <h2 class="section-title">방명록</h2>
           </div>
           <p class="section-note">방문해 주셔서 감사합니다. 짧은 한마디를 남겨 주세요. 남긴 글은 모두에게 보입니다.</p>
@@ -418,6 +459,54 @@
   });
 
   loadEntries();
+
+  // ===== 응원(cheer) 기능 =====
+  // 브라우저 → /.netlify/functions/cheers → Supabase
+  const CHEER_API = "/.netlify/functions/cheers";
+  const cheerButtons = Array.from(document.querySelectorAll(".cheer-btn"));
+
+  // 집계를 화면 버튼에 반영
+  function applyCounts(counts) {
+    if (!counts) return;
+    cheerButtons.forEach(btn => {
+      const id = btn.getAttribute("data-item");
+      const countEl = btn.querySelector(".cheer-count");
+      if (countEl && counts[id] !== undefined) countEl.textContent = counts[id];
+    });
+  }
+
+  // 현재 집계 불러오기
+  async function loadCheers() {
+    try {
+      const res = await fetch(CHEER_API, { method: "GET" });
+      if (!res.ok) return;
+      const data = await res.json();
+      applyCounts(data.counts);
+    } catch (e) { /* 집계 로드 실패는 조용히 무시(버튼은 0으로 표시) */ }
+  }
+
+  // 응원 보내기
+  async function sendCheer(btn) {
+    const itemId = btn.getAttribute("data-item");
+    btn.disabled = true;
+    try {
+      const res = await fetch(CHEER_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ item_id: itemId })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || ("HTTP " + res.status));
+      applyCounts(data.counts); // 저장 성공 시에만 숫자 갱신
+    } catch (e) {
+      alert("응원 저장에 실패했어요. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  cheerButtons.forEach(btn => btn.addEventListener("click", () => sendCheer(btn)));
+  loadCheers();
   </script>
 </body>
 </html>
