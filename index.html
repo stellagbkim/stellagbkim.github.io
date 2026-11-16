@@ -143,6 +143,15 @@
     .work-card p { margin: 0; color: var(--muted); font-size: .94rem; }
     .work-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
     .work-actions .button { flex: none; }
+    #toast {
+      position: fixed; left: 50%; bottom: 32px; transform: translateX(-50%) translateY(20px);
+      background: var(--green); color: #fff; padding: 13px 22px; border-radius: 999px;
+      font-size: .95rem; font-weight: 700; box-shadow: 0 10px 30px #253c2b33;
+      opacity: 0; pointer-events: none; transition: opacity .25s ease, transform .25s ease; z-index: 1000;
+      max-width: calc(100% - 40px); text-align: center;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    @media (prefers-reduced-motion: reduce) { #toast { transition: opacity .25s ease; } }
     @media (max-width: 760px) {
       .gb-row { flex-direction: column; }
       .hero { grid-template-columns: 1fr; padding: 60px 0; gap: 34px; }
@@ -366,6 +375,8 @@
     </footer>
   </div>
 
+  <div id="toast" role="status" aria-live="polite"></div>
+
   <script>
   // ===== 방명록 설정 =====
   // 브라우저는 Supabase를 직접 호출하지 않고, Netlify 서버 함수를 호출합니다.
@@ -383,6 +394,17 @@
   function setStatus(msg, isError) {
     statusEl.textContent = msg;
     statusEl.style.color = isError ? "#b23b3b" : "var(--muted)";
+  }
+
+  // 화면에 잠깐 떴다 사라지는 토스트 알림
+  const toastEl = document.getElementById("toast");
+  let toastTimer = null;
+  function showToast(msg) {
+    if (!toastEl) return;
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2500);
   }
 
   function escapeHtml(s) {
@@ -450,6 +472,7 @@
       await addEntry(name, message);
       msgEl.value = "";
       setStatus("남겨 주셔서 감사합니다!");
+      showToast("방명록이 등록되었습니다 ✅");
       await loadEntries();
     } catch (err) {
       setStatus("저장에 실패했어요. 다시 시도해 주세요. (" + err.message + ")", true);
@@ -498,6 +521,7 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || ("HTTP " + res.status));
       applyCounts(data.counts); // 저장 성공 시에만 숫자 갱신
+      showToast("응원이 전달되었습니다 👏");
     } catch (e) {
       alert("응원 저장에 실패했어요. 잠시 후 다시 시도해 주세요.");
     } finally {
