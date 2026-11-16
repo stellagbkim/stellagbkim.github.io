@@ -141,6 +141,10 @@
     }
     .work-card h3 { margin: 0; font-size: 1.2rem; }
     .work-card p { margin: 0; color: var(--muted); font-size: .94rem; }
+    .work-thumb {
+      width: 100%; max-height: 360px; object-fit: contain; background: #000;
+      border-radius: 10px; border: 1px solid var(--line);
+    }
     .work-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
     .work-actions .button { flex: none; }
     #toast {
@@ -345,6 +349,7 @@
         </div>
         <article class="work-card">
           <h3>갤러그 스타일 슈팅 게임</h3>
+          <img class="work-thumb" src="galaga-screenshot.png" alt="갤러그 스타일 슈팅 게임 플레이 화면 — 적 편대와 플레이어 함선" loading="lazy">
           <p>HTML Canvas와 바닐라 JavaScript로 만든 슈팅 게임입니다. 적 편대를 모두 격추해 보세요.</p>
           <div class="work-actions">
             <a class="button primary" href="galaga.html" target="_blank" rel="noopener">게임 플레이 ↗</a>
