@@ -143,6 +143,8 @@
     }
     .cheer-btn:hover { background: var(--lime); }
     .cheer-btn:disabled { opacity: .55; cursor: default; }
+    .cheer-btn.cheered { background: var(--green); color: #fff; }
+    .cheer-btn.cheered:hover { background: #2b4a3b; }
     .cheer-count { font-variant-numeric: tabular-nums; }
     .work-card {
       background: var(--white); border: 1px solid var(--line); border-radius: 14px;
@@ -336,13 +338,13 @@
             <h3>작게 시작할 프로젝트</h3>
             <ul>
               <li class="cheer-li"><span>관심 분야의 공개 데이터를 수집해 일관된 항목으로 정리하기</span>
-                <button class="cheer-btn" data-item="project-data-collect" type="button">👏 응원 <span class="cheer-count">0</span></button></li>
+                <button class="cheer-btn" data-item="project-data-collect" type="button" aria-pressed="false">👏 <span class="cheer-label">응원</span> <span class="cheer-count">0</span></button></li>
               <li class="cheer-li"><span>데이터를 정제하고 SQL로 조회할 수 있는 간단한 데이터베이스 만들기</span>
-                <button class="cheer-btn" data-item="project-db-build" type="button">👏 응원 <span class="cheer-count">0</span></button></li>
+                <button class="cheer-btn" data-item="project-db-build" type="button" aria-pressed="false">👏 <span class="cheer-label">응원</span> <span class="cheer-count">0</span></button></li>
               <li class="cheer-li"><span>조사 과정과 배운 점을 짧은 글로 기록하기</span>
-                <button class="cheer-btn" data-item="project-record-writing" type="button">👏 응원 <span class="cheer-count">0</span></button></li>
+                <button class="cheer-btn" data-item="project-record-writing" type="button" aria-pressed="false">👏 <span class="cheer-label">응원</span> <span class="cheer-count">0</span></button></li>
               <li class="cheer-li"><span>작업 결과를 한 페이지 포트폴리오로 발전시키기</span>
-                <button class="cheer-btn" data-item="project-portfolio" type="button">👏 응원 <span class="cheer-count">0</span></button></li>
+                <button class="cheer-btn" data-item="project-portfolio" type="button" aria-pressed="false">👏 <span class="cheer-label">응원</span> <span class="cheer-count">0</span></button></li>
             </ul>
           </div>
         </div>
@@ -362,7 +364,7 @@
           <p>HTML Canvas와 바닐라 JavaScript로 만든 슈팅 게임입니다. 적 편대를 모두 격추해 보세요.</p>
           <div class="work-actions">
             <a class="button primary" href="galaga.html" target="_blank" rel="noopener">게임 플레이 ↗</a>
-            <button class="cheer-btn" data-item="work-galaga" type="button">👏 응원 <span class="cheer-count">0</span></button>
+            <button class="cheer-btn" data-item="work-galaga" type="button" aria-pressed="false">👏 <span class="cheer-label">응원</span> <span class="cheer-count">0</span></button>
           </div>
         </article>
       </section>
@@ -562,6 +564,32 @@
     }).join("");
   }
 
+  // 이 브라우저(방문자)를 식별하는 익명 ID. 1인 1표 토글에 사용.
+  function getVoterId() {
+    let v = null;
+    try { v = localStorage.getItem("voterId"); } catch (e) {}
+    if (!v) {
+      v = "v-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
+      try { localStorage.setItem("voterId", v); } catch (e) {}
+    }
+    return v;
+  }
+  const VOTER_ID = getVoterId();
+  let myItems = []; // 내가 응원한 항목 목록
+
+  // 버튼의 "응원함/응원" 표시를 내 상태에 맞게 갱신
+  function applyMine(mine) {
+    if (Array.isArray(mine)) myItems = mine;
+    cheerButtons.forEach(btn => {
+      const id = btn.getAttribute("data-item");
+      const labelEl = btn.querySelector(".cheer-label");
+      const active = myItems.includes(id);
+      btn.classList.toggle("cheered", active);
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+      if (labelEl) labelEl.textContent = active ? "응원함" : "응원";
+    });
+  }
+
   // 집계를 화면 버튼에 반영 (+ 그래프 갱신)
   function applyCounts(counts) {
     if (!counts) return;
@@ -573,38 +601,40 @@
     renderChart(counts);
   }
 
-  // 현재 집계 불러오기
+  // 현재 집계 + 내가 누른 항목 불러오기
   async function loadCheers() {
     try {
-      const res = await fetch(CHEER_API, { method: "GET" });
+      const res = await fetch(CHEER_API + "?voter=" + encodeURIComponent(VOTER_ID), { method: "GET" });
       if (!res.ok) return;
       const data = await res.json();
       applyCounts(data.counts);
+      applyMine(data.mine);
     } catch (e) { /* 집계 로드 실패는 조용히 무시(버튼은 0으로 표시) */ }
   }
 
-  // 응원 보내기
-  async function sendCheer(btn) {
+  // 응원 토글 (누르면 응원, 다시 누르면 취소)
+  async function toggleCheer(btn) {
     const itemId = btn.getAttribute("data-item");
     btn.disabled = true;
     try {
       const res = await fetch(CHEER_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ item_id: itemId })
+        body: JSON.stringify({ item_id: itemId, voter_id: VOTER_ID })
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || ("HTTP " + res.status));
-      applyCounts(data.counts); // 저장 성공 시에만 숫자 갱신
-      showToast("응원이 전달되었습니다 👏");
+      applyCounts(data.counts);
+      applyMine(data.mine);
+      showToast(data.active ? "응원이 전달되었습니다 👏" : "응원을 취소했습니다");
     } catch (e) {
-      alert("응원 저장에 실패했어요. 잠시 후 다시 시도해 주세요.");
+      alert("응원 처리에 실패했어요. 잠시 후 다시 시도해 주세요.");
     } finally {
       btn.disabled = false;
     }
   }
 
-  cheerButtons.forEach(btn => btn.addEventListener("click", () => sendCheer(btn)));
+  cheerButtons.forEach(btn => btn.addEventListener("click", () => toggleCheer(btn)));
   loadCheers();
   </script>
 </body>
