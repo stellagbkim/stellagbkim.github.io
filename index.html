@@ -155,9 +155,9 @@
     .chart { display: grid; gap: 14px; max-width: 620px; }
     .chart-row { display: grid; grid-template-columns: 180px 1fr auto; align-items: center; gap: 12px; }
     .chart-label { font-size: .9rem; color: #444b45; }
-    .chart-track { background: #e7e9e1; border-radius: 999px; height: 16px; overflow: hidden; }
+    .chart-track { display: block; background: #e7e9e1; border-radius: 999px; height: 16px; overflow: hidden; align-self: center; }
     .chart-bar {
-      height: 100%; width: 0; background: var(--green); border-radius: 999px;
+      display: block; height: 16px; width: 0; background: var(--green); border-radius: 999px;
       transition: width .5s ease;
     }
     .chart-val { font-size: .86rem; font-weight: 700; color: var(--green); font-variant-numeric: tabular-nums; min-width: 2.5em; text-align: right; }
@@ -538,12 +538,12 @@
     }
     const max = Math.max(...entries.map(e => e.value), 1);
     chartEl.innerHTML = entries.map(e => {
-      const pct = Math.round((e.value / max) * 100);
+      const pct = e.value > 0 ? Math.max(Math.round((e.value / max) * 100), 4) : 0;
       return `
         <div class="chart-row">
-          <span class="chart-label">${e.label}</span>
-          <span class="chart-track"><span class="chart-bar" style="width:${pct}%"></span></span>
-          <span class="chart-val">${e.value}</span>
+          <div class="chart-label">${e.label}</div>
+          <div class="chart-track"><div class="chart-bar" style="width:${pct}%"></div></div>
+          <div class="chart-val">${e.value}</div>
         </div>`;
     }).join("");
   }
