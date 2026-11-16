@@ -152,7 +152,19 @@
     }
     #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
     @media (prefers-reduced-motion: reduce) { #toast { transition: opacity .25s ease; } }
+    .chart { display: grid; gap: 14px; max-width: 620px; }
+    .chart-row { display: grid; grid-template-columns: 180px 1fr auto; align-items: center; gap: 12px; }
+    .chart-label { font-size: .9rem; color: #444b45; }
+    .chart-track { background: #e7e9e1; border-radius: 999px; height: 16px; overflow: hidden; }
+    .chart-bar {
+      height: 100%; width: 0; background: var(--green); border-radius: 999px;
+      transition: width .5s ease;
+    }
+    .chart-val { font-size: .86rem; font-weight: 700; color: var(--green); font-variant-numeric: tabular-nums; min-width: 2.5em; text-align: right; }
+    .chart-empty { color: var(--muted); font-size: .92rem; }
     @media (max-width: 760px) {
+      .chart-row { grid-template-columns: 1fr auto; }
+      .chart-track { grid-column: 1 / -1; order: 3; }
       .gb-row { flex-direction: column; }
       .hero { grid-template-columns: 1fr; padding: 60px 0; gap: 34px; }
       .profile-card { transform: none; max-width: 420px; }
@@ -177,6 +189,7 @@
         <a href="#strengths">강점과 단점</a>
         <a href="#interests">관심사</a>
         <a href="#works">내가 만든 프로젝트</a>
+        <a href="#cheer-stats">응원 현황</a>
         <a href="#guestbook">방명록</a>
         <a href="#contact">연락</a>
       </nav>
@@ -340,10 +353,23 @@
         </article>
       </section>
 
+      <section id="cheer-stats">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">06 / Cheer stats</div>
+            <h2 class="section-title">응원 현황</h2>
+          </div>
+          <p class="section-note">방문자들이 남긴 응원을 항목별로 집계해 보여줍니다. 데이터 시각화에 대한 관심을 작게 적용해 봤습니다.</p>
+        </div>
+        <div class="chart" id="cheerChart">
+          <p class="chart-empty" id="chartEmpty">응원 현황을 불러오는 중…</p>
+        </div>
+      </section>
+
       <section id="guestbook">
         <div class="section-head">
           <div>
-            <div class="section-kicker">06 / Guestbook</div>
+            <div class="section-kicker">07 / Guestbook</div>
             <h2 class="section-title">방명록</h2>
           </div>
           <p class="section-note">방문해 주셔서 감사합니다. 짧은 한마디를 남겨 주세요. 남긴 글은 모두에게 보입니다.</p>
@@ -488,7 +514,41 @@
   const CHEER_API = "/.netlify/functions/cheers";
   const cheerButtons = Array.from(document.querySelectorAll(".cheer-btn"));
 
-  // 집계를 화면 버튼에 반영
+  // 항목 id → 사람이 읽기 좋은 이름 (그래프 라벨용)
+  const CHEER_LABELS = {
+    "project-data-collect": "공개 데이터 수집·정리",
+    "project-db-build": "간단한 데이터베이스 만들기",
+    "project-record-writing": "조사·배운 점 기록",
+    "project-portfolio": "한 페이지 포트폴리오",
+    "work-galaga": "갤러그 슈팅 게임"
+  };
+  const chartEl = document.getElementById("cheerChart");
+  const chartEmptyEl = document.getElementById("chartEmpty");
+
+  // 집계를 막대그래프로 렌더
+  function renderChart(counts) {
+    if (!chartEl || !counts) return;
+    const entries = Object.keys(CHEER_LABELS).map(id => ({
+      id, label: CHEER_LABELS[id], value: counts[id] || 0
+    }));
+    const total = entries.reduce((s, e) => s + e.value, 0);
+    if (total === 0) {
+      chartEl.innerHTML = '<p class="chart-empty">아직 응원이 없어요. 위에서 응원을 눌러 보세요!</p>';
+      return;
+    }
+    const max = Math.max(...entries.map(e => e.value), 1);
+    chartEl.innerHTML = entries.map(e => {
+      const pct = Math.round((e.value / max) * 100);
+      return `
+        <div class="chart-row">
+          <span class="chart-label">${e.label}</span>
+          <span class="chart-track"><span class="chart-bar" style="width:${pct}%"></span></span>
+          <span class="chart-val">${e.value}</span>
+        </div>`;
+    }).join("");
+  }
+
+  // 집계를 화면 버튼에 반영 (+ 그래프 갱신)
   function applyCounts(counts) {
     if (!counts) return;
     cheerButtons.forEach(btn => {
@@ -496,6 +556,7 @@
       const countEl = btn.querySelector(".cheer-count");
       if (countEl && counts[id] !== undefined) countEl.textContent = counts[id];
     });
+    renderChart(counts);
   }
 
   // 현재 집계 불러오기
